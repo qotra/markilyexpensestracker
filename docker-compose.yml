@@ -1,21 +1,14 @@
 version: '3.8'
 
 services:
-  expenses-bot:
+  expenses-tracker-bot:
     build: .
     container_name: expenses-tracker-bot
+    restart: unless-stopped
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
     volumes:
       - ./data:/app/data
       - ./expenses.db:/app/expenses.db
-    restart: unless-stopped
-    networks:
-      - bot-network
-
-networks:
-  bot-network:
-    driver: bridge
-
-volumes:
-  bot-data:
+    env_file:
+      - .env

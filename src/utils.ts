@@ -1,108 +1,63 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, subWeeks, subMonths, parseISO } from 'date-fns';
-
-export const formatCurrency = (amount: number): string => {
-  const sign = amount >= 0 ? '+' : '';
-  return `${sign}${amount.toFixed(2)} DZD`;
+export const formatAmount = (amount: number): string => {
+  return `${amount.toFixed(2)} DZD`;
 };
 
-export const formatBalance = (balance: number): string => {
-  if (balance >= 0) {
-    return `💰 Balance: ${balance.toFixed(2)} DZD`;
-  } else {
-    return `⚠️ Debt: ${Math.abs(balance).toFixed(2)} DZD`;
-  }
-};
-
-export const getDateRange = (period: string): { start: string; end: string; label: string } => {
+export const getDateRange = (period: string): { startDate: string; endDate: string } => {
   const now = new Date();
+  const endDate = now.toISOString();
+  let startDate: string;
 
-  switch (period.toLowerCase()) {
+  switch (period) {
     case 'today':
-      return {
-        start: format(startOfDay(now), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfDay(now), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'Today'
-      };
-
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      break;
     case 'yesterday':
       const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()).toISOString();
       return {
-        start: format(startOfDay(yesterday), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfDay(yesterday), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'Yesterday'
+        startDate,
+        endDate: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59).toISOString()
       };
-
-    case 'this week':
     case 'week':
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      startDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()).toISOString();
+      break;
+    case 'lastweek':
+      const lastWeekEnd = new Date(now);
+      lastWeekEnd.setDate(now.getDate() - now.getDay() - 1);
+      const lastWeekStart = new Date(lastWeekEnd);
+      lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
       return {
-        start: format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'This Week'
+        startDate: new Date(lastWeekStart.getFullYear(), lastWeekStart.getMonth(), lastWeekStart.getDate()).toISOString(),
+        endDate: new Date(lastWeekEnd.getFullYear(), lastWeekEnd.getMonth(), lastWeekEnd.getDate(), 23, 59, 59).toISOString()
       };
-
-    case 'last week':
-      const lastWeek = subWeeks(now, 1);
-      return {
-        start: format(startOfWeek(lastWeek, { weekStartsOn: 1 }), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfWeek(lastWeek, { weekStartsOn: 1 }), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'Last Week'
-      };
-
-    case 'this month':
     case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      break;
+    case 'lastmonth':
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
-        start: format(startOfMonth(now), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfMonth(now), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'This Month'
+        startDate: lastMonth.toISOString(),
+        endDate: new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), lastMonthEnd.getDate(), 23, 59, 59).toISOString()
       };
-
-    case 'last month':
-      const lastMonth = subMonths(now, 1);
-      return {
-        start: format(startOfMonth(lastMonth), 'yyyy-MM-dd HH:mm:ss'),
-        end: format(endOfMonth(lastMonth), 'yyyy-MM-dd HH:mm:ss'),
-        label: 'Last Month'
-      };
-
     default:
-      // Try to parse as specific date (YYYY-MM-DD)
-      try {
-        const date = parseISO(period);
-        return {
-          start: format(startOfDay(date), 'yyyy-MM-dd HH:mm:ss'),
-          end: format(endOfDay(date), 'yyyy-MM-dd HH:mm:ss'),
-          label: format(date, 'MMMM d, yyyy')
-        };
-      } catch {
-        // Try to parse as month (YYYY-MM)
-        try {
-          const date = parseISO(`${period}-01`);
-          return {
-            start: format(startOfMonth(date), 'yyyy-MM-dd HH:mm:ss'),
-            end: format(endOfMonth(date), 'yyyy-MM-dd HH:mm:ss'),
-            label: format(date, 'MMMM yyyy')
-          };
-        } catch {
-          // Default to this month
-          return {
-            start: format(startOfMonth(now), 'yyyy-MM-dd HH:mm:ss'),
-            end: format(endOfMonth(now), 'yyyy-MM-dd HH:mm:ss'),
-            label: 'This Month'
-          };
-        }
-      }
+      startDate = new Date(0).toISOString(); // All time
   }
+
+  return { startDate, endDate };
 };
 
-export const getCategoryEmoji = (category: string): string => {
-  const emojis: { [key: string]: string } = {
-    personal: '🛍️',
-    food: '🍔',
-    family: '👨‍👩‍👧‍👦',
-    transit: '🚌',
-    bills: '📄',
-    entertainments: '🎬'
-  };
-  return emojis[category] || '💸';
+export const parseCustomDate = (dateStr: string): Date | null => {
+  // Parse dates in format YYYY-MM-DD or DD/MM/YYYY
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    return new Date(dateStr);
+  }
+  if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+    const [day, month, year] = dateStr.split('/');
+    return new Date(`${year}-${month}-${day}`);
+  }
+  return null;
 };

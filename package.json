@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "watch": "ts-node --watch src/index.ts"
+    "clean": "rm -rf dist"
   },
   "keywords": ["telegram", "bot", "expenses", "tracker"],
   "author": "",
@@ -15,13 +15,12 @@
   "dependencies": {
     "telegraf": "^4.15.6",
     "sqlite3": "^5.1.6",
-    "date-fns": "^2.30.0",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.8.0",
-    "@types/sqlite3": "^3.1.8",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
   }
 }
+
