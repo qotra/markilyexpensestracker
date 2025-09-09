@@ -3,7 +3,7 @@ version: '3.8'
 services:
   expenses-tracker-bot:
     build: .
-    container_name: expenses-tracker-bot
+    container_name: expenses-tracker-bot-new
     restart: unless-stopped
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
