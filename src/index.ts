@@ -19,6 +19,7 @@ interface BotContext extends Context {
     waitingForAmount?: boolean;
     waitingForBalance?: boolean;
     waitingForDescription?: boolean;
+    waitingForCustomDate?: boolean;
     selectedCategory?: ExpenseCategory;
   };
 }
@@ -73,32 +74,42 @@ bot.help(async (ctx) => {
   const helpMessage = `
 📚 **Expenses Tracker Bot Help**
 
-**Commands:**
-/balance - Add money to your balance
-/expense - Add a new expense  
-/report [period] - Get expense report
-
-**Report Periods:**
-• today, yesterday
-• this week, last week
-• this month, last month
-• YYYY-MM-DD (specific date)
-• YYYY-MM (specific month)
+**Features:**
+• 💰 Add Balance - Add money to your account
+• 💸 Add Expense - Track your spending  
+• 📊 View Report - See expense summaries
 
 **Categories:**
 🛍️ Personal - Personal purchases
 🍔 Food - Food and dining
 👨‍👩‍👧‍👦 Family - Family expenses
 🚌 Transit - Transportation costs
+📄 Bills - Bills and utilities
+🎬 Entertainments - Entertainment expenses
 
-**Examples:**
-\`/report today\`
-\`/report last week\`
-\`/report 2025-09\`
-\`/report 2025-09-08\`
+**Balance System:**
+• Positive balance shows available money
+• Negative balance tracks debt/overspending
+• All expenses are automatically deducted
+
+**Report Options:**
+• Daily: Today, Yesterday
+• Weekly: This Week, Last Week  
+• Monthly: This Month, Last Month
+• Custom Search: Specific dates or ranges
+• By Category: Filter by expense type
+
+Use /start to return to main menu anytime!
   `;
 
-  await ctx.reply(helpMessage, { parse_mode: 'Markdown' });
+  const backKeyboard = Markup.inlineKeyboard([
+    [Markup.button.callback('🔙 Back to Menu', 'back_to_menu')]
+  ]);
+
+  await ctx.reply(helpMessage, {
+    parse_mode: 'Markdown',
+    reply_markup: backKeyboard.reply_markup
+  });
 });
 
 // Balance command
@@ -144,12 +155,12 @@ bot.command('report', async (ctx) => {
   const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   let reportMessage = `📊 **Expense Report - ${label}**\n\n`;
-  reportMessage += `💰 Total Spent: $${totalAmount.toFixed(2)}\n\n`;
+  reportMessage += `💰 Total Spent: ${totalAmount.toFixed(2)} DZD\n\n`;
 
   reportMessage += `**By Category:**\n`;
   for (const category of categoryTotals) {
     const emoji = getCategoryEmoji(category.category);
-    reportMessage += `${emoji} ${category.category}: $${category.total.toFixed(2)}\n`;
+    reportMessage += `${emoji} ${category.category}: ${category.total.toFixed(2)} DZD\n`;
   }
 
   reportMessage += `\n**Recent Transactions:**\n`;
@@ -158,7 +169,7 @@ bot.command('report', async (ctx) => {
   for (const expense of recentExpenses) {
     const emoji = getCategoryEmoji(expense.category);
     const date = new Date(expense.created_at).toLocaleDateString();
-    reportMessage += `${emoji} $${expense.amount.toFixed(2)} - ${expense.category}`;
+    reportMessage += `${emoji} ${expense.amount.toFixed(2)} DZD - ${expense.category}`;
     if (expense.description) {
       reportMessage += ` (${expense.description})`;
     }
@@ -229,7 +240,7 @@ bot.on('text', async (ctx) => {
     session.expenseAmount = amount;
     session.waitingForAmount = false;
 
-    // Show category selection
+    // Show all 6 categories
     const keyboard = Markup.inlineKeyboard([
       [
         Markup.button.callback('🛍️ Personal', 'category_personal'),
@@ -238,6 +249,10 @@ bot.on('text', async (ctx) => {
       [
         Markup.button.callback('👨‍👩‍👧‍👦 Family', 'category_family'),
         Markup.button.callback('🚌 Transit', 'category_transit')
+      ],
+      [
+        Markup.button.callback('📄 Bills', 'category_bills'),
+        Markup.button.callback('🎬 Entertainments', 'category_entertainments')
       ]
     ]);
 
@@ -288,7 +303,6 @@ bot.on('text', async (ctx) => {
     );
     return;
   }
-});
 
   // Handle custom date search input
   if (session.waitingForCustomDate) {
@@ -375,6 +389,7 @@ bot.on('text', async (ctx) => {
       return;
     }
   }
+});
 
 // Handle category selection
 bot.action(/category_(.+)/, async (ctx) => {
@@ -403,7 +418,7 @@ bot.action(/category_(.+)/, async (ctx) => {
   await ctx.answerCbQuery();
 });
 
-// Add button handlers for main commands
+// Button handlers for main commands
 bot.action('cmd_balance', async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
@@ -430,11 +445,11 @@ bot.action('cmd_report', async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  // Show report options
+  // Show report options including custom search
   const reportKeyboard = Markup.inlineKeyboard([
     [
       Markup.button.callback('📅 Today', 'report_today'),
-  // Show report options including custom search
+      Markup.button.callback('📅 Yesterday', 'report_yesterday')
     ],
     [
       Markup.button.callback('📊 This Week', 'report_this week'),
@@ -445,19 +460,19 @@ bot.action('cmd_report', async (ctx) => {
       Markup.button.callback('📈 Last Month', 'report_last month')
     ],
     [
-      Markup.button.callback('🔙 Back to Menu', 'back_to_menu')
-    ]
-  ]);
-
       Markup.button.callback('🔍 Custom Search', 'custom_search'),
       Markup.button.callback('📂 By Category', 'category_search')
     ],
     [
-  await ctx.editMessageText('📊 Select a report period:', reportKeyboard);
+      Markup.button.callback('🔙 Back to Menu', 'back_to_menu')
+    ]
+  ]);
+
+  await ctx.editMessageText('📊 Select a report type:', reportKeyboard);
   await ctx.answerCbQuery();
 });
 
-  await ctx.editMessageText('📊 Select a report type:', reportKeyboard);
+bot.action('cmd_help', async (ctx) => {
   const helpMessage = `
 📚 **Expenses Tracker Bot Help**
 
@@ -468,9 +483,11 @@ bot.action('cmd_report', async (ctx) => {
 
 **Categories:**
 🛍️ Personal - Personal purchases
-🍔 Food - Food and dining
+🍔 Food - Food and dining  
 👨‍👩‍👧‍👦 Family - Family expenses
 🚌 Transit - Transportation costs
+📄 Bills - Bills and utilities
+🎬 Entertainments - Entertainment expenses
 
 **Balance System:**
 • Positive balance shows available money
@@ -479,8 +496,10 @@ bot.action('cmd_report', async (ctx) => {
 
 **Report Options:**
 • Daily: Today, Yesterday
-• Weekly: This Week, Last Week
+• Weekly: This Week, Last Week  
 • Monthly: This Month, Last Month
+• Custom Search: Specific dates or ranges
+• By Category: Filter by expense type
 
 Use /start to return to main menu anytime!
   `;
@@ -493,6 +512,104 @@ Use /start to return to main menu anytime!
     parse_mode: 'Markdown',
     reply_markup: backKeyboard.reply_markup
   });
+  await ctx.answerCbQuery();
+});
+
+// Handle custom search button
+bot.action('custom_search', async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const session = getSession(userId);
+  session.waitingForCustomDate = true;
+
+  await ctx.editMessageText(
+    '🔍 **Custom Date Search**\n\nEnter a date or date range:\n\n**Examples:**\n• `2025-09-08` (specific date)\n• `2025-09` (entire month)\n• `2025-08-01 to 2025-08-31` (date range)\n\n**Formats:**\n• YYYY-MM-DD for specific dates\n• YYYY-MM for entire months\n• Use "to" between dates for ranges'
+  );
+  await ctx.answerCbQuery();
+});
+
+// Handle category search button
+bot.action('category_search', async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const categoryKeyboard = Markup.inlineKeyboard([
+    [
+      Markup.button.callback('🛍️ Personal', 'search_category_personal'),
+      Markup.button.callback('🍔 Food', 'search_category_food')
+    ],
+    [
+      Markup.button.callback('👨‍👩‍👧‍👦 Family', 'search_category_family'),
+      Markup.button.callback('🚌 Transit', 'search_category_transit')
+    ],
+    [
+      Markup.button.callback('📄 Bills', 'search_category_bills'),
+      Markup.button.callback('🎬 Entertainments', 'search_category_entertainments')
+    ],
+    [
+      Markup.button.callback('🔙 Back to Reports', 'cmd_report')
+    ]
+  ]);
+
+  await ctx.editMessageText('📂 **Search by Category**\n\nSelect a category to view all expenses:', categoryKeyboard);
+  await ctx.answerCbQuery();
+});
+
+// Handle category search selection
+bot.action(/search_category_(.+)/, async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const category = ctx.match[1] as ExpenseCategory;
+
+  if (!EXPENSE_CATEGORIES.includes(category)) {
+    await ctx.answerCbQuery('❌ Invalid category');
+    return;
+  }
+
+  const expenses = await db.getExpenses(userId, undefined, undefined, category);
+
+  if (expenses.length === 0) {
+    const backKeyboard = Markup.inlineKeyboard([
+      [Markup.button.callback('🔙 Back to Reports', 'cmd_report')]
+    ]);
+    await ctx.editMessageText(
+      `📊 No expenses found for ${getCategoryEmoji(category)} ${category}.`,
+      backKeyboard
+    );
+    await ctx.answerCbQuery();
+    return;
+  }
+
+  const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const emoji = getCategoryEmoji(category);
+
+  let reportMessage = `📂 **${emoji} ${category.toUpperCase()} Expenses**\n\n`;
+  reportMessage += `💰 Total Spent: ${totalAmount.toFixed(2)} DZD\n`;
+  reportMessage += `📊 Total Transactions: ${expenses.length}\n\n`;
+
+  reportMessage += `**Recent Transactions:**\n`;
+  const recentExpenses = expenses.slice(0, 15);
+
+  for (const expense of recentExpenses) {
+    const date = new Date(expense.created_at).toLocaleDateString();
+    reportMessage += `${emoji} ${expense.amount.toFixed(2)} DZD`;
+    if (expense.description) {
+      reportMessage += ` - ${expense.description}`;
+    }
+    reportMessage += ` (${date})\n`;
+  }
+
+  if (expenses.length > 15) {
+    reportMessage += `\n... and ${expenses.length - 15} more transactions`;
+  }
+
+  const backKeyboard = Markup.inlineKeyboard([
+    [Markup.button.callback('🔙 Back to Reports', 'cmd_report')]
+  ]);
+
+  await ctx.editMessageText(reportMessage, backKeyboard);
   await ctx.answerCbQuery();
 });
 
@@ -604,7 +721,7 @@ bot.action('back_to_menu', async (ctx) => {
   // Clear any existing session
   delete userSessions[userId];
 
-// Handle category search button
+  let user = await db.getUser(userId);
   if (!user) {
     user = await db.createUser(userId);
   }
@@ -644,7 +761,7 @@ const startBot = async () => {
     await bot.launch();
     console.log('🚀 Expenses Tracker Bot started successfully!');
   } catch (error) {
-
+    console.error('Failed to start bot:', error);
     process.exit(1);
   }
 };
@@ -658,5 +775,3 @@ if (require.main === module) {
 }
 
 export { bot };
-
-
