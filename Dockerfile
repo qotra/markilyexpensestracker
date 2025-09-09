@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Set production environment
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package*.json ./
 

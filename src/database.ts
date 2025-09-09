@@ -1,5 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
+import * as path from 'path';
 
 export interface User {
   id: number;
@@ -23,11 +24,14 @@ class Database {
   private initialized = false;
 
   constructor() {
-    this.db = new sqlite3.Database('expenses.db', (err) => {
+    // Use data directory in production (Docker) or current directory in development
+    const dbPath = process.env.NODE_ENV === 'production' ? '/app/data/expenses.db' : 'expenses.db';
+
+    this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error('Error opening database:', err);
       } else {
-        console.log('✅ Database connection established');
+        console.log('✅ Database connection established at:', dbPath);
       }
     });
 
