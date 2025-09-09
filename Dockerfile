@@ -2,9 +2,6 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV=production
-
 # Install Python and build tools needed for native modules
 RUN apk add --no-cache python3 make g++
 
@@ -25,6 +22,9 @@ RUN npm run build
 
 # Remove devDependencies to reduce image size
 RUN npm prune --production
+
+# Set production environment after build
+ENV NODE_ENV=production
 
 # Create directory for database
 RUN mkdir -p /app/data
