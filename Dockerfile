@@ -5,6 +5,9 @@ WORKDIR /app
 # Set production environment
 ENV NODE_ENV=production
 
+# Install Python and build tools needed for native modules
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package*.json ./
 
@@ -13,6 +16,9 @@ RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Rebuild native modules for the container architecture
+RUN npm rebuild
 
 # Build the application
 RUN npm run build
